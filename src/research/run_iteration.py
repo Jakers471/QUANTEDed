@@ -29,11 +29,12 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from src.research.params    import load_params, reload_params, PARAMS_PATH, get as _p
-from src.research.scoring   import score_history
-from src.research.detector  import FractalDetector
-from src.research.export    import patterns_to_dataframe, save_patterns
-from src.research.visualize import plot_all_patterns
+from src.research.params            import load_params, reload_params, PARAMS_PATH, get as _p
+from src.research.scoring           import score_history
+from src.research.detector          import FractalDetector, PatternRecord, AbortRecord
+from src.research.export            import patterns_to_dataframe, save_patterns
+from src.research.visualize         import plot_all_patterns
+from src.research.visualize_summary import plot_summary_dashboard, plot_signal_map
 
 ITERATIONS_DIR = Path(__file__).resolve().parents[2] / "outputs" / "iterations"
 
@@ -59,35 +60,36 @@ def _next_name(iterations_dir: Path) -> str:
 # Per-timeframe run
 # ---------------------------------------------------------------------------
 
-def _run_tf(tf: str, run_dir: Path, max_png: int, context_bars: int, ny: bool) -> dict:
+def _run_tf(tf: str, run_dir: Path, max_png: int, context_bars: int, ny: bool) -> tuple[dict, list[PatternRecord], list[AbortRecord]]:
     """
-    Detect patterns for one timeframe, save CSV + PNGs, return stats dict.
+    Detect patterns for one timeframe, save CSV + PNGs, return (stats, patterns, aborts).
     """
     print(f"\n  [{tf}] loading score history...")
     data = score_history(tf, ny_session=ny)
     print(f"  [{tf}] {len(data):,} bars  ({data.index[0].date()} to {data.index[-1].date()})")
 
-    detector  = FractalDetector(tf)
-    patterns  = detector.run(data)
-    print(f"  [{tf}] {len(patterns):,} patterns detected")
+    detector = FractalDetector(tf)
+    patterns = detector.run(data)
+    aborts   = detector.aborts
+    print(f"  [{tf}] {len(patterns):,} completed  |  {len(aborts):,} aborted")
 
     # Signal-by-signal CSV
     save_patterns(patterns, tf, run_dir)
 
-    # Inspection PNGs
+    # Inspection PNGs (individual pattern charts — unchanged)
     subset = patterns[:max_png]
     if subset:
         plot_all_patterns(subset, data, run_dir, tf)
 
-    # Aggregate stats for summary row
     if not patterns:
-        return _empty_stats(tf, ny)
+        return _empty_stats(tf, ny), patterns, aborts
 
     df = patterns_to_dataframe(patterns)
-    return {
+    stats = {
         "timeframe":          tf,
         "ny_session":         ny,
         "pattern_count":      len(patterns),
+        "abort_count":        len(aborts),
         "fib_depth_mean":     round(df["fib_retracement_depth"].mean(),  3),
         "fib_depth_median":   round(df["fib_retracement_depth"].median(), 3),
         "fib_depth_std":      round(df["fib_retracement_depth"].std(),   3),
@@ -97,11 +99,12 @@ def _run_tf(tf: str, run_dir: Path, max_png: int, context_bars: int, ny: bool) -
         "consol_bars_median": round(df["consol_duration_bars"].median(), 1),
         "entry_score_mean":   round(df["entry_score"].mean(),            3),
     }
+    return stats, patterns, aborts
 
 
 def _empty_stats(tf: str, ny: bool) -> dict:
     return {
-        "timeframe": tf, "ny_session": ny, "pattern_count": 0,
+        "timeframe": tf, "ny_session": ny, "pattern_count": 0, "abort_count": 0,
         "fib_depth_mean": None,  "fib_depth_median": None, "fib_depth_std": None,
         "move_bars_mean": None,  "move_bars_median": None,
         "consol_bars_mean": None,"consol_bars_median": None,
@@ -133,7 +136,8 @@ def _enrich_summary(rows: list[dict], params: dict, name: str, ts: str) -> pd.Da
         row.update(key_params)
 
     cols = (
-        ["iteration", "run_ts", "timeframe", "ny_session", "pattern_count",
+        ["iteration", "run_ts", "timeframe", "ny_session",
+         "pattern_count", "abort_count",
          "fib_depth_mean", "fib_depth_median", "fib_depth_std",
          "move_bars_mean", "move_bars_median",
          "consol_bars_mean", "consol_bars_median",
@@ -175,12 +179,17 @@ def main() -> None:
     print(f"NY session     : {ny_flag}  |  max PNG: {max_png}  |  context bars: {context_bars}")
 
     # Run each timeframe
-    stats_rows = []
+    stats_rows     = []
+    patterns_by_tf = {}
+    aborts_by_tf   = {}
+
     for tf in timeframes:
         ny = ny_flag and (tf != "1day")
         try:
-            row = _run_tf(tf, run_dir, max_png, context_bars, ny)
+            row, patterns, aborts = _run_tf(tf, run_dir, max_png, context_bars, ny)
             stats_rows.append(row)
+            patterns_by_tf[tf] = patterns
+            aborts_by_tf[tf]   = aborts
         except Exception as exc:
             print(f"\n  [ERROR] {tf}: {exc}")
             stats_rows.append(_empty_stats(tf, ny_flag and (tf != "1day")))
@@ -190,10 +199,33 @@ def main() -> None:
     summary_path = run_dir / "summary.csv"
     summary.to_csv(summary_path, index=False)
 
+    # Summary dashboard PNG
+    print(f"\n  Generating summary visuals...")
+    try:
+        plot_summary_dashboard(
+            patterns_by_tf, aborts_by_tf, name,
+            run_dir / "summary_dashboard.png"
+        )
+    except Exception as exc:
+        print(f"  [WARN] summary_dashboard failed: {exc}")
+
+    # Per-TF signal map PNGs
+    for tf in patterns_by_tf:
+        try:
+            plot_signal_map(
+                tf,
+                patterns_by_tf[tf],
+                aborts_by_tf.get(tf, []),
+                name,
+                run_dir / f"signal_map_{tf}.png",
+            )
+        except Exception as exc:
+            print(f"  [WARN] signal_map_{tf} failed: {exc}")
+
     print(f"\n{'='*60}")
     print(f"Iteration complete: {name}")
     print(f"Summary:\n")
-    print(summary[["timeframe", "pattern_count", "fib_depth_mean",
+    print(summary[["timeframe", "pattern_count", "abort_count", "fib_depth_mean",
                    "move_bars_mean", "consol_bars_mean", "entry_score_mean"]].to_string(index=False))
     print(f"\nAll outputs in: {run_dir}")
 

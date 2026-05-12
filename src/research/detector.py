@@ -18,8 +18,22 @@ from src.research.params import get as _p
 
 
 # ---------------------------------------------------------------------------
-# Data model
+# Data models
 # ---------------------------------------------------------------------------
+
+@dataclass
+class AbortRecord:
+    """A pattern attempt that was started but never reached entry signal."""
+    timeframe: str
+    move_start_ts: pd.Timestamp
+    move_end_ts: pd.Timestamp         # when move ended, or death ts if died in move
+    move_duration_bars: int
+    reached_consol: bool              # True if it made it to consolidation phase
+    consol_start_ts: pd.Timestamp | None
+    abort_ts: pd.Timestamp            # bar where it was discarded
+    consol_bars_survived: int         # 0 if died before/during move phase
+    death_reason: str                 # "reversal" | "move_too_short" | "fib_invalidated" | "timeout"
+
 
 @dataclass
 class PatternRecord:
@@ -78,6 +92,10 @@ class FractalDetector:
         self.BREAKOUT_CLOSE  = _p("detector", "breakout_uses_close")
         self.INVALID_CLOSE   = _p("detector", "invalidation_uses_close")
 
+        # Collects AbortRecords for every pattern attempt that didn't reach entry.
+        # Populated during run(), not cleared by _reset().
+        self.aborts: list[AbortRecord] = []
+
         self._state = _State.IDLE
         self._reset()
 
@@ -101,6 +119,7 @@ class FractalDetector:
         # Reset before each full run so the detector is reusable
         self._state = _State.IDLE
         self._reset()
+        self.aborts = []
 
         patterns: list[PatternRecord] = []
 
@@ -168,7 +187,7 @@ class FractalDetector:
             self._hysteresis_rev = 0
 
         if self._hysteresis_rev >= self.HYSTERESIS:
-            self._reset()
+            self._abort(ts, "reversal", reached_consol=False)
             return
 
         # Below-trend counter (score < TREND_THRESH → potential end of move)
@@ -190,8 +209,7 @@ class FractalDetector:
                 self._hysteresis_up     = 0
                 self._breakout_count    = 0
             else:
-                # Move too short — discard and reset
-                self._reset()
+                self._abort(ts, "move_too_short", reached_consol=False)
 
     def _handle_in_consol(
         self, ts: pd.Timestamp, row: pd.Series
@@ -216,12 +234,12 @@ class FractalDetector:
         # --- Invalidation ---
         invalidation_price = close if self.INVALID_CLOSE else row["low"]
         if invalidation_price < fib_level:
-            self._reset()
+            self._abort(ts, "fib_invalidated", reached_consol=True)
             return None
 
         # --- Timeout: consolidation too long ---
         if self._consol_bars > self.TIMEOUT_MULT * self._move_bars:
-            self._reset()
+            self._abort(ts, "timeout", reached_consol=True)
             return None
 
         # --- Breakout check ---
@@ -278,6 +296,22 @@ class FractalDetector:
             entry_price          = row["close"],
             entry_score          = row["score"],
         )
+
+    def _abort(self, ts: pd.Timestamp, reason: str, reached_consol: bool) -> None:
+        """Record a failed pattern attempt and reset state."""
+        if self._move_start_ts is not None:
+            self.aborts.append(AbortRecord(
+                timeframe            = self.tf,
+                move_start_ts        = self._move_start_ts,
+                move_end_ts          = self._move_end_ts if reached_consol else ts,
+                move_duration_bars   = self._move_bars,
+                reached_consol       = reached_consol,
+                consol_start_ts      = self._consol_start_ts if reached_consol else None,
+                abort_ts             = ts,
+                consol_bars_survived = self._consol_bars if reached_consol else 0,
+                death_reason         = reason,
+            ))
+        self._reset()
 
     def _reset(self) -> None:
         """Zero out ALL state variables. Must touch every field."""

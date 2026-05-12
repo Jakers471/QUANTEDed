@@ -28,6 +28,7 @@ Nothing gets deleted from this list — completed items get marked and dated.
 - [x] Visualization: all-window regime backgrounds + step annotations — DONE
 - [x] NY session filter (RTH only, 9:30–16:00 ET) — DONE
 - [x] Iteration system: params.yaml → run_iteration.py → versioned outputs — DONE
+- [x] Signal lifecycle visuals: AbortRecord tracking, summary_dashboard.png, signal_map_{tf}.png — DONE
 
 ---
 

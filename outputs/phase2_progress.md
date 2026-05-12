@@ -222,6 +222,34 @@ Change parameters here, not in code. Code reads from this file.
 
 ---
 
+## Step 7 — Signal Lifecycle Visuals (COMPLETE)
+
+### What was added
+- `src/research/detector.py` — `AbortRecord` dataclass; detector now tracks every failed pattern attempt and exposes `detector.aborts` after `run()`
+- `src/research/visualize_summary.py` — two new chart types, separate from individual pattern PNGs:
+  - `plot_summary_dashboard()` → `summary_dashboard.png`: 5-panel stats view across all TFs (funnel, fib depth, move/consol duration distributions, quarterly frequency)
+  - `plot_signal_map()` → `signal_map_{tf}.png` per TF: compact Gantt of last 200 signal attempts + funnel + abort reason breakdown + consol survival histogram
+- `src/research/run_iteration.py` — collects aborts from detector, calls both new visuals per run, adds `abort_count` to summary CSV
+
+### AbortRecord fields
+| Field | Meaning |
+|---|---|
+| `death_reason` | `fib_invalidated` \| `timeout` \| `reversal` \| `move_too_short` |
+| `reached_consol` | Did it make it to consolidation phase? |
+| `consol_bars_survived` | How long it lasted in consolidation before dying |
+| `abort_ts` | Exact bar where it was discarded |
+
+### What the signal map shows (per TF)
+- **Gantt** (left, large): each row = one of the last 200 attempts. Green block = move, orange = consol, green ▲ = completed, colored ✕ = died (color = reason)
+- **Funnel** (top-right): moves started → reached consolidation → entry fired
+- **Death reasons** (mid-right): bar chart of abort reasons
+- **Consol survival** (bottom-right): histogram of bars survived, aborted (red) vs completed (green) overlaid
+
+### Key finding from baseline run
+1min: 7,072 completed / 61,022 aborted — roughly 1 in 9 moves that start result in an entry signal.
+
+---
+
 ## Step 6 — Iteration System (COMPLETE)
 
 ### What was added
