@@ -33,7 +33,7 @@ run:
     impact: low
 
   start_date:
-    value: "2015-01-01"
+    value: "2019-01-01"
     # Clip data to start from this date. Use null to load all available history.
     # Format: "YYYY-MM-DD". Data begins 2005-01-11 — anything earlier is ignored.
     # Example — 10 years:  "2015-01-01"
@@ -43,7 +43,7 @@ run:
     impact: medium
 
   end_date:
-    value: null
+    value: 2025-01-15
     # Clip data to end at this date. Use null to load up to the latest bar.
     # Format: "YYYY-MM-DD".
     # Example — in-sample only:  "2018-12-31"
@@ -158,8 +158,15 @@ detector:
     # Consolidation is abandoned if it lasts longer than
     # (timeout_multiplier * move_duration) bars.
     # Adaptive: a longer move allows a longer consolidation.
-    # Prevents tracking stale setups indefinitely.
-    # Pure absolute cap is NOT used — that would be regime-dependent.
+    tunable: true
+    impact: medium
+
+  consolidation_max_bars:
+    value: null
+    # Hard absolute cap on consolidation length regardless of move duration.
+    # When hit: signal is lost, state resets to IDLE (same as timeout).
+    # null = disabled — only the multiplier applies.
+    # Example — cap at 50 bars:  value: 50
     tunable: true
     impact: medium
 

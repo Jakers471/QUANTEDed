@@ -146,6 +146,7 @@ def _enrich_summary(rows: list[dict], params: dict, name: str, ts: str) -> pd.Da
         "min_move_bars":                   params["detector"]["min_move_bars"]["value"],
         "min_consol_bars":                 params["detector"]["min_consolidation_bars"]["value"],
         "timeout_mult":                    params["detector"]["consolidation_timeout_multiplier"]["value"],
+        "consol_max_bars":                 params["detector"]["consolidation_max_bars"]["value"],
         "fib_invalidation":                params["detector"]["fib_invalidation_level"]["value"],
         "breakout_uses_close":             params["detector"]["breakout_uses_close"]["value"],
         "invalidation_uses_close":         params["detector"]["invalidation_uses_close"]["value"],

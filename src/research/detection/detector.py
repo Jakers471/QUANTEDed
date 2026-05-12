@@ -88,6 +88,7 @@ class FractalDetector:
         self.MIN_MOVE_BARS   = _p("detector", "min_move_bars")
         self.MIN_CONSOL_BARS = _p("detector", "min_consolidation_bars")
         self.TIMEOUT_MULT    = _p("detector", "consolidation_timeout_multiplier")
+        self.MAX_CONSOL_BARS = _p("detector", "consolidation_max_bars")
         self.FIB_INVALID     = _p("detector", "fib_invalidation_level")
         self.BREAKOUT_CLOSE  = _p("detector", "breakout_uses_close")
         self.INVALID_CLOSE   = _p("detector", "invalidation_uses_close")
@@ -237,8 +238,11 @@ class FractalDetector:
             self._abort(ts, "fib_invalidated", reached_consol=True)
             return None
 
-        # --- Timeout: consolidation too long ---
+        # --- Timeout: consolidation too long (relative or absolute cap) ---
         if self._consol_bars > self.TIMEOUT_MULT * self._move_bars:
+            self._abort(ts, "timeout", reached_consol=True)
+            return None
+        if self.MAX_CONSOL_BARS is not None and self._consol_bars > self.MAX_CONSOL_BARS:
             self._abort(ts, "timeout", reached_consol=True)
             return None
 
