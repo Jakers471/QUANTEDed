@@ -71,11 +71,11 @@ def _next_name(iterations_dir: Path, d_start: str, d_end: str) -> str:
 # Per-timeframe run
 # ---------------------------------------------------------------------------
 
-def _clip_dates(data: pd.DataFrame, start: str | None, end: str | None) -> pd.DataFrame:
+def _clip_dates(data: pd.DataFrame, start, end) -> pd.DataFrame:
     if start:
-        data = data[data.index >= pd.Timestamp(start, tz="UTC")]
+        data = data[data.index >= pd.Timestamp(str(start), tz="UTC")]
     if end:
-        data = data[data.index <= pd.Timestamp(end, tz="UTC")]
+        data = data[data.index <= pd.Timestamp(str(end), tz="UTC")]
     return data
 
 
@@ -177,7 +177,16 @@ def main() -> None:
     params = reload_params()
 
     timeframes   = _p("run", "timeframes")
-    d_start, d_end = _data_date_range(timeframes)
+    start_date   = _p("run", "start_date")
+    end_date     = _p("run", "end_date")
+
+    # Folder label uses the configured date range; fall back to parquet bounds if null
+    if start_date or end_date:
+        raw_start, raw_end = _data_date_range(timeframes)
+        d_start = start_date or raw_start
+        d_end   = str(end_date) if end_date else raw_end
+    else:
+        d_start, d_end = _data_date_range(timeframes)
     name = _next_name(ITERATIONS_DIR, d_start, d_end)
     run_dir = ITERATIONS_DIR / name
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -197,8 +206,6 @@ def main() -> None:
     context_bars = _p("visualization", "context_bars")
     ny_flag      = _p("session", "ny_session_only")
     overlay_bars_cfg = _p("visualization", "detection_overlay_bars")
-    start_date   = _p("run", "start_date")
-    end_date     = _p("run", "end_date")
 
     print(f"Timeframes     : {timeframes}")
     print(f"Date range     : {start_date or 'all'} to {end_date or 'latest'}")
