@@ -38,6 +38,8 @@ GRID_COL  = "#1e2530"
 LABEL_COL = "#6b7a8d"
 WHITE     = "#c8d6e5"
 
+REGIME_BG_ALPHA = 0.08
+
 DEATH_COLORS = {
     "fib_invalidated": RED,
     "timeout":         AMBER,
