@@ -93,7 +93,9 @@ produces score per bar       reads score, applies pattern rules, emits signal
 | Parameter | Current | Enable/Disable | What it does |
 |---|---|---|---|
 | `detector.hysteresis` | 2 | Adjust | Bars a score condition must hold before state change |
-| `detector.min_move_bars` | 5 | Adjust | Minimum move length to qualify |
+| `detector.min_move_bars` | 5 | Adjust | Minimum move length in bars |
+| `detector.min_move_atr_multiple` | null | null = off | Minimum move height as multiple of ATR — filters small moves |
+| `detector.atr_period` | 14 | Adjust | ATR lookback for size filter |
 | `detector.min_consolidation_bars` | 20 | Adjust | Minimum consolidation length to qualify |
 | `detector.consolidation_max_bars` | 60 | null = off | Hard absolute cap on consolidation bars |
 | `detector.consolidation_timeout_multiplier` | 3 | Adjust | Adaptive cap = N × move duration |
@@ -101,8 +103,14 @@ produces score per bar       reads score, applies pattern rules, emits signal
 | `detector.breakout_uses_close` | true | true/false | Use close vs wick for breakout confirmation |
 | `detector.invalidation_uses_close` | true | true/false | Use close vs wick for fib invalidation |
 
+**Move quality filters — two independent checks:**
+`min_move_bars` filters on duration. `min_move_atr_multiple` filters on size (height relative to recent volatility). Both can be active simultaneously — either alone can kill a move before consolidation starts. The ATR filter is self-scaling: a 1.5× ATR move means the same thing in a low-vol period as in a high-vol period.
+
 **Consolidation caps — how they interact:**
 Both `consolidation_max_bars` and `consolidation_timeout_multiplier` run every bar. Whichever fires first kills the signal. The multiplier is adaptive (scales with move length). The hard cap is a ceiling regardless. Set `consolidation_max_bars: null` to rely on multiplier only.
+
+**Bearish signal (to be added):**
+Same exact state machine, score thresholds inverted. Entry trigger is score < 0.35 sustained for HYSTERESIS bars (move down), consolidation when score rises back above 0.35, breakout when score breaks below 0.35 again and close breaks consolidation low. Fib invalidation flipped: close above 0.5 fib of the down-move kills it. All size/duration filters apply equally. When added it will be a direction flag in params, not a separate detector.
 
 ---
 

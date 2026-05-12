@@ -71,6 +71,18 @@ def _next_name(iterations_dir: Path, d_start: str, d_end: str) -> str:
 # Per-timeframe run
 # ---------------------------------------------------------------------------
 
+def _add_atr(data: pd.DataFrame, period: int) -> pd.DataFrame:
+    prev_close = data["close"].shift(1)
+    tr = pd.concat([
+        data["high"] - data["low"],
+        (data["high"] - prev_close).abs(),
+        (data["low"]  - prev_close).abs(),
+    ], axis=1).max(axis=1)
+    data = data.copy()
+    data["atr"] = tr.rolling(period, min_periods=1).mean()
+    return data
+
+
 def _clip_dates(data: pd.DataFrame, start, end) -> pd.DataFrame:
     if start:
         data = data[data.index >= pd.Timestamp(str(start), tz="UTC")]
@@ -87,6 +99,7 @@ def _run_tf(tf: str, run_dir: Path, max_png: int, context_bars: int, ny: bool,
     print(f"\n  [{tf}] loading score history...")
     data = score_history(tf, ny_session=ny)
     data = _clip_dates(data, start_date, end_date)
+    data = _add_atr(data, _p("detector", "atr_period"))
     print(f"  [{tf}] {len(data):,} bars  ({data.index[0].date()} to {data.index[-1].date()})")
 
     detector = FractalDetector(tf)
@@ -147,6 +160,8 @@ def _enrich_summary(rows: list[dict], params: dict, name: str, ts: str) -> pd.Da
         "min_consol_bars":                 params["detector"]["min_consolidation_bars"]["value"],
         "timeout_mult":                    params["detector"]["consolidation_timeout_multiplier"]["value"],
         "consol_max_bars":                 params["detector"]["consolidation_max_bars"]["value"],
+        "min_move_atr_multiple":           params["detector"]["min_move_atr_multiple"]["value"],
+        "atr_period":                      params["detector"]["atr_period"]["value"],
         "fib_invalidation":                params["detector"]["fib_invalidation_level"]["value"],
         "breakout_uses_close":             params["detector"]["breakout_uses_close"]["value"],
         "invalidation_uses_close":         params["detector"]["invalidation_uses_close"]["value"],

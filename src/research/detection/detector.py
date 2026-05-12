@@ -85,7 +85,9 @@ class FractalDetector:
         self.TREND_THRESH    = _p("regimes",  "trend_up_threshold")
         self.RANGE_LOW       = _p("regimes",  "range_low_threshold")
         self.HYSTERESIS      = _p("detector", "hysteresis")
-        self.MIN_MOVE_BARS   = _p("detector", "min_move_bars")
+        self.MIN_MOVE_BARS       = _p("detector", "min_move_bars")
+        self.MIN_MOVE_ATR        = _p("detector", "min_move_atr_multiple")
+        self.ATR_PERIOD          = _p("detector", "atr_period")
         self.MIN_CONSOL_BARS = _p("detector", "min_consolidation_bars")
         self.TIMEOUT_MULT    = _p("detector", "consolidation_timeout_multiplier")
         self.MAX_CONSOL_BARS = _p("detector", "consolidation_max_bars")
@@ -199,6 +201,13 @@ class FractalDetector:
 
         if self._below_trend_count >= self.HYSTERESIS:
             if self._move_bars >= self.MIN_MOVE_BARS:
+                # Size filter: move height vs ATR
+                if self.MIN_MOVE_ATR is not None:
+                    atr = row.get("atr") if "atr" in row.index else None
+                    move_height = self._move_high - self._move_low
+                    if atr is not None and not pd.isna(atr) and move_height < self.MIN_MOVE_ATR * atr:
+                        self._abort(ts, "move_too_small", reached_consol=False)
+                        return
                 # Lock move end, transition to IN_CONSOLIDATION
                 self._state         = _State.IN_CONSOLIDATION
                 self._move_end_ts   = ts

@@ -141,12 +141,27 @@ detector:
     # Minimum number of bars a move must last to be considered valid.
     # Filters single-bar spikes and very short impulses.
     # On 1min: 5 bars = 5 minutes. On 1day: 5 bars = 1 trading week.
-    # Consider scaling this differently per timeframe in the future.
     tunable: true
     impact: medium
 
+  min_move_atr_multiple:
+    value: null
+    # Move height (high - low of full move) must be >= N x ATR(atr_period).
+    # Filters moves that are too small relative to recent volatility.
+    # Self-scaling — same meaning in low and high volatility regimes.
+    # null = disabled. Example: value: 1.5
+    tunable: true
+    impact: medium
+
+  atr_period:
+    value: 14
+    # ATR lookback period used for min_move_atr_multiple check.
+    # Only relevant when min_move_atr_multiple is not null.
+    tunable: true
+    impact: low
+
   min_consolidation_bars:
-    value: 5
+    value: 20
     # Minimum number of bars the consolidation phase must last.
     # Filters immediate reversals that look like consolidations
     # but are just continuation gaps.
@@ -154,7 +169,7 @@ detector:
     impact: medium
 
   consolidation_max_bars:
-    value: null
+    value: 60
     # Hard absolute cap on consolidation length regardless of move duration.
     # When hit: signal is lost, state resets to IDLE (same as timeout).
     # null = disabled — only the multiplier applies.
@@ -163,7 +178,7 @@ detector:
     impact: medium
 
   consolidation_timeout_multiplier:
-    value: 3
+    value: 9999
     # Consolidation is abandoned if it lasts longer than
     # (timeout_multiplier * move_duration) bars.
     # Adaptive: a longer move allows a longer consolidation.

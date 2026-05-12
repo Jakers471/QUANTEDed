@@ -45,6 +45,7 @@ DEATH_COLORS = {
     "timeout":         AMBER,
     "reversal":        "#9b59b6",   # purple
     "move_too_short":  GRAY,
+    "move_too_small":  "#3b82f6",   # blue
 }
 
 TF_ORDER = ["1min", "5min", "15min", "60min", "1day"]
