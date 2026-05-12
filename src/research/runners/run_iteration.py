@@ -34,7 +34,10 @@ from src.research.score.scoring               import score_history
 from src.research.detection.detector          import FractalDetector, PatternRecord, AbortRecord
 from src.research.detection.export            import patterns_to_dataframe, save_patterns
 from src.research.visualization.visualize     import plot_all_patterns
-from src.research.visualization.visualize_summary import plot_summary_dashboard, plot_signal_map
+from src.research.visualization.visualize_summary import (
+    plot_summary_dashboard, plot_signal_map, plot_detection_overlay,
+)
+from src.loader.loader import load_all as _load_all_raw
 
 ITERATIONS_DIR = Path(__file__).resolve().parents[3] / "outputs" / "iterations"
 
@@ -43,8 +46,15 @@ ITERATIONS_DIR = Path(__file__).resolve().parents[3] / "outputs" / "iterations"
 # Auto-naming
 # ---------------------------------------------------------------------------
 
-def _next_name(iterations_dir: Path) -> str:
-    """Return next auto-incremented name: iteration_001, iteration_002, ..."""
+def _data_date_range(timeframes: list) -> tuple[str, str]:
+    """Get data start/end dates from the smallest available TF parquet (fast)."""
+    tf = "1day" if "1day" in timeframes else timeframes[0]
+    df = _load_all_raw(tf)
+    return str(df.index[0].date()), str(df.index[-1].date())
+
+
+def _next_name(iterations_dir: Path, d_start: str, d_end: str) -> str:
+    """Return next auto-incremented name: iteration_001_2005-01-11_2025-01-10"""
     existing = []
     if iterations_dir.exists():
         for d in iterations_dir.iterdir():
@@ -53,14 +63,15 @@ def _next_name(iterations_dir: Path) -> str:
                     existing.append(int(d.name.split("_")[1]))
                 except (IndexError, ValueError):
                     pass
-    return f"iteration_{(max(existing, default=0) + 1):03d}"
+    num = max(existing, default=0) + 1
+    return f"iteration_{num:03d}_{d_start}_{d_end}"
 
 
 # ---------------------------------------------------------------------------
 # Per-timeframe run
 # ---------------------------------------------------------------------------
 
-def _run_tf(tf: str, run_dir: Path, max_png: int, context_bars: int, ny: bool) -> tuple[dict, list[PatternRecord], list[AbortRecord]]:
+def _run_tf(tf: str, run_dir: Path, max_png: int, context_bars: int, ny: bool) -> tuple[dict, list[PatternRecord], list[AbortRecord], "pd.DataFrame"]:
     """
     Detect patterns for one timeframe, save CSV + PNGs, return (stats, patterns, aborts).
     """
@@ -82,7 +93,7 @@ def _run_tf(tf: str, run_dir: Path, max_png: int, context_bars: int, ny: bool) -
         plot_all_patterns(subset, data, run_dir, tf)
 
     if not patterns:
-        return _empty_stats(tf, ny), patterns, aborts
+        return _empty_stats(tf, ny), patterns, aborts, data
 
     df = patterns_to_dataframe(patterns)
     stats = {
@@ -99,7 +110,7 @@ def _run_tf(tf: str, run_dir: Path, max_png: int, context_bars: int, ny: bool) -
         "consol_bars_median": round(df["consol_duration_bars"].median(), 1),
         "entry_score_mean":   round(df["entry_score"].mean(),            3),
     }
-    return stats, patterns, aborts
+    return stats, patterns, aborts, data
 
 
 def _empty_stats(tf: str, ny: bool) -> dict:
@@ -155,7 +166,9 @@ def main() -> None:
     # Fresh params load (clears cache so changes are picked up)
     params = reload_params()
 
-    name = _next_name(ITERATIONS_DIR)
+    timeframes   = _p("run", "timeframes")
+    d_start, d_end = _data_date_range(timeframes)
+    name = _next_name(ITERATIONS_DIR, d_start, d_end)
     run_dir = ITERATIONS_DIR / name
     run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -173,7 +186,7 @@ def main() -> None:
     max_png      = _p("visualization", "max_png_per_tf")
     context_bars = _p("visualization", "context_bars")
     ny_flag      = _p("session", "ny_session_only")
-    timeframes   = _p("run", "timeframes")
+    overlay_bars_cfg = _p("visualization", "detection_overlay_bars")
 
     print(f"Timeframes     : {timeframes}")
     print(f"NY session     : {ny_flag}  |  max PNG: {max_png}  |  context bars: {context_bars}")
@@ -182,14 +195,16 @@ def main() -> None:
     stats_rows     = []
     patterns_by_tf = {}
     aborts_by_tf   = {}
+    data_by_tf     = {}
 
     for tf in timeframes:
         ny = ny_flag and (tf != "1day")
         try:
-            row, patterns, aborts = _run_tf(tf, run_dir, max_png, context_bars, ny)
+            row, patterns, aborts, data = _run_tf(tf, run_dir, max_png, context_bars, ny)
             stats_rows.append(row)
             patterns_by_tf[tf] = patterns
             aborts_by_tf[tf]   = aborts
+            data_by_tf[tf]     = data
         except Exception as exc:
             print(f"\n  [ERROR] {tf}: {exc}")
             stats_rows.append(_empty_stats(tf, ny_flag and (tf != "1day")))
@@ -221,6 +236,22 @@ def main() -> None:
             )
         except Exception as exc:
             print(f"  [WARN] signal_map_{tf} failed: {exc}")
+
+    # Per-TF detection overlay PNGs (6 sample periods across full history)
+    overlay_per_tf = overlay_bars_cfg.get("per_timeframe", {}) if isinstance(overlay_bars_cfg, dict) else {}
+    for tf in data_by_tf:
+        try:
+            plot_detection_overlay(
+                tf,
+                data_by_tf[tf],
+                patterns_by_tf.get(tf, []),
+                aborts_by_tf.get(tf, []),
+                name,
+                run_dir / f"detection_overlay_{tf}.png",
+                window_bars=overlay_per_tf.get(tf, 1000),
+            )
+        except Exception as exc:
+            print(f"  [WARN] detection_overlay_{tf} failed: {exc}")
 
     print(f"\n{'='*60}")
     print(f"Iteration complete: {name}")

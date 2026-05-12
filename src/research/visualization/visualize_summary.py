@@ -351,3 +351,187 @@ def plot_signal_map(
     plt.savefig(save_path, dpi=120, bbox_inches="tight", facecolor=BG, pad_inches=0.1)
     plt.close(fig)
     print(f"  Saved signal map: {save_path.name}")
+
+
+# ---------------------------------------------------------------------------
+# Detection overlay (zoomed-out candlestick + all attempts painted on price)
+# ---------------------------------------------------------------------------
+
+def plot_detection_overlay(
+    tf: str,
+    data: pd.DataFrame,
+    patterns: list[PatternRecord],
+    aborts: list[AbortRecord],
+    run_name: str,
+    save_path: "Path",
+    window_bars: int = 1000,
+    n_panels: int = 6,
+) -> None:
+    """
+    6-panel (2 rows x 3 cols) detection overlay.
+
+    Panels are evenly distributed across the full data history so you see
+    detector activity at different points in time — not just the recent period.
+    Each panel shows window_bars of candlestick data with every detection attempt
+    painted as phase bands + outcome markers.
+
+    Green bands  = move phase (alpha accumulates with density)
+    Amber bands  = consolidation phase
+    Green  ^     = entry signal fired
+    Colored x    = aborted (color = death reason)
+    """
+    from src.research.visualization.visualize import _draw_candlesticks
+
+    total = len(data)
+    if total == 0:
+        return
+
+    # Clamp panel bars so we never exceed total data
+    panel_bars = min(window_bars, total)
+
+    # Start indices evenly distributed so panels span the full history.
+    # Last panel always ends at the final bar.
+    if total <= panel_bars:
+        starts = [0] * n_panels
+    else:
+        starts = np.linspace(0, total - panel_bars, n_panels, dtype=int).tolist()
+
+    n_cols = 3
+    n_rows = (n_panels + n_cols - 1) // n_cols
+
+    fig, axes = plt.subplots(
+        n_rows, n_cols,
+        figsize=(28, 6 * n_rows),
+        facecolor=BG,
+    )
+    fig.subplots_adjust(hspace=0.38, wspace=0.08, left=0.04, right=0.97,
+                        top=0.93, bottom=0.05)
+
+    axes_flat = axes.flatten() if n_panels > 1 else [axes]
+
+    total_completed = 0
+    total_aborted   = 0
+
+    for panel_idx, start in enumerate(starts):
+        ax = axes_flat[panel_idx]
+        ax.set_facecolor(BG)
+
+        end    = min(start + panel_bars, total)
+        window = data.iloc[start:end].copy()
+        n      = len(window)
+        xs     = np.arange(n)
+
+        win_start = window.index[0]
+        win_end   = window.index[-1]
+
+        def _rel(ts, _n=n, _w=window):
+            idx = _w.index.searchsorted(ts)
+            return int(min(max(idx, 0), _n - 1))
+
+        y_min = window["low"].min()  * 0.9993
+        y_max = window["high"].max() * 1.0007
+        price_range = y_max - y_min
+
+        _draw_regime_backgrounds(ax, window["score"].values, alpha=REGIME_BG_ALPHA)
+
+        n_completed = 0
+        n_aborted   = 0
+
+        for p in patterns:
+            if p.entry_ts < win_start or p.move_start_ts > win_end:
+                continue
+            n_completed += 1
+            ax.axvspan(_rel(p.move_start_ts),   _rel(p.move_end_ts),
+                       alpha=0.10, color=GREEN, zorder=0)
+            ax.axvspan(_rel(p.consol_start_ts), _rel(p.consol_end_ts),
+                       alpha=0.10, color=AMBER, zorder=0)
+            ex = _rel(p.entry_ts)
+            ax.plot(ex, window["close"].iloc[min(ex, n - 1)],
+                    marker="^", markersize=5, color=GREEN, zorder=5, markeredgewidth=0)
+
+        for a in aborts:
+            if a.abort_ts < win_start or a.move_start_ts > win_end:
+                continue
+            n_aborted += 1
+            move_end_ts = a.move_end_ts if a.reached_consol else a.abort_ts
+            ax.axvspan(_rel(a.move_start_ts), _rel(move_end_ts),
+                       alpha=0.06, color=GREEN, zorder=0)
+            if a.reached_consol and a.consol_start_ts:
+                ax.axvspan(_rel(a.consol_start_ts), _rel(a.abort_ts),
+                           alpha=0.06, color=AMBER, zorder=0)
+            ax_x = _rel(a.abort_ts)
+            dc = DEATH_COLORS.get(a.death_reason, GRAY)
+            ax.plot(ax_x, window["close"].iloc[min(ax_x, n - 1)],
+                    marker="x", markersize=4, color=dc, markeredgewidth=1.0, zorder=5)
+
+        total_completed += n_completed
+        total_aborted   += n_aborted
+
+        _draw_candlesticks(ax, window, xs, price_range)
+
+        # Score overlay (right axis)
+        ax_s = ax.twinx()
+        ax_s.set_facecolor("none")
+        ax_s.plot(xs, window["score"].values, color=WHITE,
+                  linewidth=0.5, alpha=0.30, zorder=1)
+        ax_s.axhline(0.65, color=GREEN, linewidth=0.4, linestyle=":", alpha=0.35)
+        ax_s.axhline(0.35, color=RED,   linewidth=0.4, linestyle=":", alpha=0.35)
+        ax_s.set_ylim(-0.05, 1.15)
+        ax_s.set_yticks([])
+        for spine in ax_s.spines.values():
+            spine.set_color(GRID_COL)
+
+        # Axes
+        ax.set_xlim(-1, n)
+        ax.set_ylim(y_min, y_max)
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:,.0f}"))
+        ax.tick_params(colors=LABEL_COL, length=2, labelsize=6)
+        for spine in ax.spines.values():
+            spine.set_color(GRID_COL)
+        ax.yaxis.grid(True, color=GRID_COL, linewidth=0.3, alpha=0.4)
+
+        tick_positions = np.linspace(0, n - 1, min(5, n), dtype=int)
+        tick_labels    = [str(window.index[i].date()) for i in tick_positions]
+        ax.set_xticks(tick_positions)
+        ax.set_xticklabels(tick_labels, color=LABEL_COL, fontsize=6, rotation=20, ha="right")
+
+        # Panel subtitle
+        ax.set_title(
+            f"{win_start.date()} — {win_end.date()}  "
+            f"| {n_completed} fired  {n_aborted} aborted",
+            color=LABEL_COL, fontsize=7, pad=3,
+        )
+
+    # Hide unused panels
+    for i in range(n_panels, len(axes_flat)):
+        axes_flat[i].set_visible(False)
+
+    # Shared legend on the figure
+    legend_els = [
+        mpatches.Patch(facecolor=GREEN, alpha=0.5, label="Move phase"),
+        mpatches.Patch(facecolor=AMBER, alpha=0.5, label="Consol phase"),
+        Line2D([0], [0], marker="^", color="none", markerfacecolor=GREEN,
+               markersize=7, label="Entry fired"),
+    ] + [
+        Line2D([0], [0], marker="x", color="none", markeredgecolor=c,
+               markersize=7, markeredgewidth=1.5, label=f"Died: {reason}")
+        for reason, c in DEATH_COLORS.items()
+    ]
+    fig.legend(
+        handles=legend_els,
+        loc="lower center",
+        ncol=len(legend_els),
+        facecolor=BG, edgecolor=GRID_COL, labelcolor=LABEL_COL, fontsize=7,
+        bbox_to_anchor=(0.5, 0.0),
+    )
+
+    fig.suptitle(
+        f"{run_name}  [{tf}]  Detection Overlay — {n_panels} sample periods  |  "
+        f"{data.index[0].date()} to {data.index[-1].date()}  |  "
+        f"{total_completed:,} completed  /  {total_aborted:,} aborted shown",
+        color=LABEL_COL, fontsize=9, y=0.97,
+    )
+
+    plt.savefig(save_path, dpi=120, bbox_inches="tight", facecolor=BG, pad_inches=0.15)
+    plt.close(fig)
+    print(f"  Saved detection overlay: {save_path.name}")

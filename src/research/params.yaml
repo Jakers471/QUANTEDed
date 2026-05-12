@@ -206,6 +206,21 @@ visualization:
     tunable: true
     impact: low
 
+  detection_overlay_bars:
+    per_timeframe:
+      "1min":  500
+      "5min":  1000
+      "15min": 1500
+      "60min": 1000
+      "1day":  2000
+    # How many of the most recent bars to show in the detection overlay chart.
+    # The overlay draws every detection attempt (phase bands + outcome markers)
+    # on top of the actual candlestick chart — gives a zoomed-out view of
+    # detector activity on real price data. Overlapping bands build up density.
+    # Adjust per TF to control how much history is visible.
+    tunable: false
+    impact: low
+
   heatmap_n_bars:
     per_timeframe:
       "1min":  5000
