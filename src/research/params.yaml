@@ -153,20 +153,20 @@ detector:
     tunable: true
     impact: medium
 
-  consolidation_timeout_multiplier:
-    value: 3
-    # Consolidation is abandoned if it lasts longer than
-    # (timeout_multiplier * move_duration) bars.
-    # Adaptive: a longer move allows a longer consolidation.
-    tunable: true
-    impact: medium
-
   consolidation_max_bars:
     value: null
     # Hard absolute cap on consolidation length regardless of move duration.
     # When hit: signal is lost, state resets to IDLE (same as timeout).
     # null = disabled — only the multiplier applies.
     # Example — cap at 50 bars:  value: 50
+    tunable: true
+    impact: medium
+
+  consolidation_timeout_multiplier:
+    value: 3
+    # Consolidation is abandoned if it lasts longer than
+    # (timeout_multiplier * move_duration) bars.
+    # Adaptive: a longer move allows a longer consolidation.
     tunable: true
     impact: medium
 
