@@ -77,17 +77,32 @@ Signal is invalidated (dies) if at any point during consolidation:
 - Consolidation drags beyond `timeout_multiplier × move_duration` bars (temporal invalidation)
 - Score drops below 0.35 for HYSTERESIS bars during the move (full reversal)
 
+**Where the signal lives:**
+
+The signal is the combination of two files working in sequence:
+
+```
+score/scoring.py        →    detection/detector.py
+produces score per bar       reads score, applies pattern rules, emits signal
+```
+
+`scoring.py` defines what "trending" means numerically. `detector.py` defines the geometric and temporal pattern rules on top of that score. Neither produces a signal alone — the score is the input, the detector is the logic. Everything else (`export.py`, the visualization files, `run_iteration.py`) is feeding data in or reading results out.
+
 **State machine parameters (params.yaml):**
 
 | Parameter | Current | Enable/Disable | What it does |
 |---|---|---|---|
 | `detector.hysteresis` | 2 | Adjust | Bars a score condition must hold before state change |
 | `detector.min_move_bars` | 5 | Adjust | Minimum move length to qualify |
-| `detector.min_consolidation_bars` | 5 | Adjust | Minimum consolidation length to qualify |
-| `detector.consolidation_timeout_multiplier` | 3 | Adjust | Max consol = N × move duration |
+| `detector.min_consolidation_bars` | 20 | Adjust | Minimum consolidation length to qualify |
+| `detector.consolidation_max_bars` | 60 | null = off | Hard absolute cap on consolidation bars |
+| `detector.consolidation_timeout_multiplier` | 3 | Adjust | Adaptive cap = N × move duration |
 | `detector.fib_invalidation_level` | 0.5 | Adjust | Retracement depth that kills the pattern |
 | `detector.breakout_uses_close` | true | true/false | Use close vs wick for breakout confirmation |
 | `detector.invalidation_uses_close` | true | true/false | Use close vs wick for fib invalidation |
+
+**Consolidation caps — how they interact:**
+Both `consolidation_max_bars` and `consolidation_timeout_multiplier` run every bar. Whichever fires first kills the signal. The multiplier is adaptive (scales with move length). The hard cap is a ceiling regardless. Set `consolidation_max_bars: null` to rely on multiplier only.
 
 ---
 
