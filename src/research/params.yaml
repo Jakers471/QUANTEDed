@@ -1,8 +1,36 @@
 # ============================================================
 # Research Parameters
 # All tunable values for scoring, detection, and visualization.
-# Change values here — code reads from this file.
+# Change values here — code reads from this file at run time.
+#
+# HOW TO ENABLE / DISABLE A FEATURE:
+#   Boolean params use  value: true  or  value: false
+#   Examples:
+#     session.ny_session_only   — set false to include all hours
+#     detector.breakout_uses_close — set false to use wick instead of close
+#
+# HOW TO TARGET SPECIFIC TIMEFRAMES:
+#   Edit run.timeframes — list only the TFs you want in the iteration.
+#   Remove any you want to skip. The iteration runner reads this list.
 # ============================================================
+
+
+# ------------------------------------------------------------
+# RUN CONFIG — which timeframes to process
+# ------------------------------------------------------------
+run:
+
+  timeframes:
+    value: ["1min", "5min", "15min", "60min", "1day"]
+    # List of timeframes to include in each iteration run.
+    # Remove any entry to skip that timeframe entirely.
+    # Valid values: "1min", "5min", "15min", "60min", "1day"
+    # Example — only test intraday:
+    #   value: ["1min", "5min", "15min", "60min"]
+    # Example — focus on a single TF to iterate faster:
+    #   value: ["5min"]
+    tunable: true
+    impact: low
 
 
 # ------------------------------------------------------------

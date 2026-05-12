@@ -36,7 +36,6 @@ from src.research.export    import patterns_to_dataframe, save_patterns
 from src.research.visualize import plot_all_patterns
 
 ITERATIONS_DIR = Path(__file__).resolve().parents[2] / "outputs" / "iterations"
-TIMEFRAMES     = ["1min", "5min", "15min", "60min", "1day"]
 
 
 # ---------------------------------------------------------------------------
@@ -166,23 +165,25 @@ def main() -> None:
     shutil.copy(PARAMS_PATH, run_dir / "params_snapshot.yaml")
     print(f"Params snapshot saved.")
 
-    # Pull visualization / session config
+    # Pull visualization / session / run config
     max_png      = _p("visualization", "max_png_per_tf")
     context_bars = _p("visualization", "context_bars")
     ny_flag      = _p("session", "ny_session_only")
+    timeframes   = _p("run", "timeframes")
 
-    print(f"NY session filter: {ny_flag}  |  max PNG: {max_png}  |  context bars: {context_bars}")
+    print(f"Timeframes     : {timeframes}")
+    print(f"NY session     : {ny_flag}  |  max PNG: {max_png}  |  context bars: {context_bars}")
 
     # Run each timeframe
     stats_rows = []
-    for tf in TIMEFRAMES:
+    for tf in timeframes:
         ny = ny_flag and (tf != "1day")
         try:
             row = _run_tf(tf, run_dir, max_png, context_bars, ny)
             stats_rows.append(row)
         except Exception as exc:
             print(f"\n  [ERROR] {tf}: {exc}")
-            stats_rows.append(_empty_stats(tf, ny_flag and tf != "1day"))
+            stats_rows.append(_empty_stats(tf, ny_flag and (tf != "1day")))
 
     # Summary CSV
     summary = _enrich_summary(stats_rows, params, name, run_ts)

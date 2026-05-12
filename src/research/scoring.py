@@ -16,24 +16,28 @@ from src.loader.loader import get_bars, load_all
 from src.utils.timeframes import filter_ny_session
 from src.research.params import get as _p
 
-SCALES: list[int] = _p("scoring", "scales")
+
+def _scales() -> list[int]:
+    """Read scales from params.yaml each call — respects reload_params() between iterations."""
+    return _p("scoring", "scales")
 
 
 def binary_decomp_score(tf: str, as_of: pd.Timestamp) -> float:
     """
     Point-in-time binary decomp score as of as_of.
     as_of must be UTC timezone-aware.
-    Raises ValueError if fewer than 512 bars available.
+    Raises ValueError if fewer than max(scales) bars available.
     """
+    scales = _scales()
     bars = get_bars(tf, as_of)
-    if len(bars) < SCALES[-1]:
+    if len(bars) < scales[-1]:
         raise ValueError(
-            f"Need at least {SCALES[-1]} bars before {as_of}, got {len(bars)}"
+            f"Need at least {scales[-1]} bars before {as_of}, got {len(bars)}"
         )
     close = bars["close"]
     last_close = close.iloc[-1]
-    hits = sum(1 for s in SCALES if last_close > close.rolling(s).mean().iloc[-1])
-    return hits / len(SCALES)
+    hits = sum(1 for s in scales if last_close > close.rolling(s).mean().iloc[-1])
+    return hits / len(scales)
 
 
 def score_breakdown(tf: str, as_of: pd.Timestamp) -> dict:
@@ -41,15 +45,16 @@ def score_breakdown(tf: str, as_of: pd.Timestamp) -> dict:
     Returns per-scale binary values and the overall score.
     Useful for debugging what the scorer is seeing at a specific moment.
     """
+    scales = _scales()
     bars = get_bars(tf, as_of)
-    if len(bars) < SCALES[-1]:
+    if len(bars) < scales[-1]:
         raise ValueError(
-            f"Need at least {SCALES[-1]} bars before {as_of}, got {len(bars)}"
+            f"Need at least {scales[-1]} bars before {as_of}, got {len(bars)}"
         )
     close = bars["close"]
     last_close = close.iloc[-1]
-    breakdown = {f"s{s}": int(last_close > close.rolling(s).mean().iloc[-1]) for s in SCALES}
-    breakdown["score"] = sum(breakdown.values()) / len(SCALES)
+    breakdown = {f"s{s}": int(last_close > close.rolling(s).mean().iloc[-1]) for s in scales}
+    breakdown["score"] = sum(breakdown.values()) / len(scales)
     breakdown["close"] = last_close
     breakdown["as_of"] = as_of
     return breakdown
@@ -61,26 +66,26 @@ def score_history(tf: str, last_n_bars: int | None = None, ny_session: bool = Fa
     FOR VISUALIZATION AND RESEARCH ONLY — not for backtesting.
 
     Returns DataFrame indexed by datetime (UTC) with columns:
-      s2, s4, s8, s16, s32, s64, s128, s256, s512  — per-scale binary (0 or 1)
-      score                                          — mean of all scale columns
-      close, high, low, volume                       — bar data
+      s2, s4, ... per active scale  — per-scale binary (0 or 1)
+      score                          — mean of all scale columns
+      open, high, low, close, volume — bar data
 
-    First 511 rows (where not all SMAs have data) are dropped.
+    Bars where any SMA hasn't warmed up are dropped (dropna).
     """
+    scales = _scales()
     df = load_all(tf)
 
     if last_n_bars is not None:
-        # Pull extra history so SMAs are valid at the start of the window
-        df = df.iloc[-(last_n_bars + SCALES[-1]):]
+        df = df.iloc[-(last_n_bars + scales[-1]):]
 
     close = df["close"]
     scale_cols = {}
-    for s in SCALES:
+    for s in scales:
         sma = close.rolling(s).mean()
         scale_cols[f"s{s}"] = (close > sma).astype(float)
 
     result = pd.DataFrame(scale_cols, index=df.index)
-    result["score"] = result[[f"s{s}" for s in SCALES]].mean(axis=1)
+    result["score"] = result[[f"s{s}" for s in scales]].mean(axis=1)
     result["open"]   = df["open"]
     result["high"]   = df["high"]
     result["low"]    = df["low"]
