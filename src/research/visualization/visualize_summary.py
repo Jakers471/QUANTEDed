@@ -380,7 +380,7 @@ def plot_detection_overlay(
     Green  ^     = entry signal fired
     Colored x    = aborted (color = death reason)
     """
-    from src.research.visualization.visualize import _draw_candlesticks
+    from src.research.visualization.visualize import _draw_candlesticks, _draw_regime_backgrounds
 
     total = len(data)
     if total == 0:
