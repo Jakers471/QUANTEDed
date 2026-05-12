@@ -1,0 +1,253 @@
+# ============================================================
+# Research Parameters
+# All tunable values for scoring, detection, and visualization.
+# Change values here — code reads from this file.
+# ============================================================
+
+
+# ------------------------------------------------------------
+# SCORING — Binary Decomposition Score
+# ------------------------------------------------------------
+scoring:
+
+  scales:
+    value: [2, 4, 8, 16, 32, 64, 128, 256, 512]
+    # The SMA periods used to measure trend across multiple timescales.
+    # Each scale asks: is close > SMA(N)? Answer is 0 or 1.
+    # Geometric doubling (2x each step) gives equal logarithmic spacing.
+    # Adding smaller scales (2, 4) makes the score more sensitive to
+    # short-term changes. Removing large scales (256, 512) makes it
+    # less sensitive to long-term trend.
+    # Current count: 9 scales.
+    tunable: true
+    impact: high
+
+  weights:
+    mode: equal
+    # How each scale contributes to the final score.
+    # "equal" = every scale counts 1/N (currently 1/9).
+    # Future modes:
+    #   "exponential_decay" — shorter scales get more weight.
+    #     weight[i] = decay_rate ^ i, then normalize.
+    #     Rationale: recent price action is more relevant than ancient SMA.
+    #   "geometric" — custom per-scale weights.
+    # Changing this changes what the score "feels like" without
+    # changing the scale set.
+    tunable: true
+    impact: medium
+
+  decay_rate:
+    value: 0.85
+    # Only used when weights.mode = "exponential_decay".
+    # Range (0, 1). Lower = faster decay = shorter scales dominate more.
+    # 0.85 means scale[1] gets 85% of scale[0]'s weight,
+    # scale[2] gets 85%^2 = 72%, etc.
+    tunable: true
+    impact: medium
+
+
+# ------------------------------------------------------------
+# REGIME THRESHOLDS — used by detector and visualization
+# ------------------------------------------------------------
+regimes:
+
+  trend_up_threshold:
+    value: 0.65
+    # Score must exceed this to be classified as "trending up."
+    # Abstract — not a price level. Higher = stricter definition of trending.
+    # At 0.65: close must be above 6 of 9 SMAs.
+    tunable: true
+    impact: high
+
+  range_low_threshold:
+    value: 0.35
+    # Score below this = full reversal / trending down.
+    # The band between range_low and trend_up (0.35–0.65) = consolidating.
+    # Symmetric around 0.5 by default. You can make it asymmetric
+    # (e.g., 0.40–0.65) to require a stronger reversal signal.
+    tunable: true
+    impact: high
+
+  consolidation_band:
+    derived: "range_low_threshold < score < trend_up_threshold"
+    # Not a separate parameter — defined by the two thresholds above.
+    # Shown here for clarity: anything between 0.35 and 0.65 is "consolidating."
+
+
+# ------------------------------------------------------------
+# DETECTOR — State Machine (FractalDetector)
+# ------------------------------------------------------------
+detector:
+
+  hysteresis:
+    value: 2
+    # Number of consecutive bars a score condition must hold before
+    # triggering a state transition.
+    # Prevents a single noisy bar from flipping the state machine.
+    # Lower = more sensitive, more false transitions.
+    # Higher = more lag, fewer false transitions.
+    tunable: true
+    impact: high
+
+  min_move_bars:
+    value: 5
+    # Minimum number of bars a move must last to be considered valid.
+    # Filters single-bar spikes and very short impulses.
+    # On 1min: 5 bars = 5 minutes. On 1day: 5 bars = 1 trading week.
+    # Consider scaling this differently per timeframe in the future.
+    tunable: true
+    impact: medium
+
+  min_consolidation_bars:
+    value: 5
+    # Minimum number of bars the consolidation phase must last.
+    # Filters immediate reversals that look like consolidations
+    # but are just continuation gaps.
+    tunable: true
+    impact: medium
+
+  consolidation_timeout_multiplier:
+    value: 3
+    # Consolidation is abandoned if it lasts longer than
+    # (timeout_multiplier * move_duration) bars.
+    # Adaptive: a longer move allows a longer consolidation.
+    # Prevents tracking stale setups indefinitely.
+    # Pure absolute cap is NOT used — that would be regime-dependent.
+    tunable: true
+    impact: medium
+
+  fib_invalidation_level:
+    value: 0.5
+    # Fibonacci retracement level that invalidates a consolidation.
+    # If bar.close < move_high - (move_height * fib_invalidation_level),
+    # the pattern is discarded.
+    # 0.5 = 50% retracement. Shallower (0.382) = more selective.
+    # Deeper (0.618) = more permissive.
+    tunable: true
+    impact: high
+
+  breakout_uses_close:
+    value: true
+    # If true: breakout confirmed only when close > consolidation_high.
+    # If false: any wick above consolidation_high triggers breakout.
+    # Close is more conservative and noise-resistant. Recommended: true.
+    tunable: true
+    impact: medium
+
+  invalidation_uses_close:
+    value: true
+    # If true: invalidation triggered only when close < fib_50.
+    # If false: any low (wick) below fib_50 invalidates.
+    # Close is more conservative. Recommended: true.
+    tunable: true
+    impact: medium
+
+
+# ------------------------------------------------------------
+# SESSION FILTER — NY Regular Trading Hours
+# ------------------------------------------------------------
+session:
+
+  ny_session_only:
+    value: true
+    # When true, intraday timeframes (all except 1day) are filtered to
+    # NY regular trading hours: 9:30 AM – 4:00 PM ET.
+    # 1day bars are never filtered.
+    # Eliminates overnight noise and pre/post-market sessions from pattern detection.
+    tunable: true
+    impact: medium
+
+
+# ------------------------------------------------------------
+# VISUALIZATION — Heatmap and inspection charts
+# ------------------------------------------------------------
+visualization:
+
+  context_bars:
+    value: 50
+    # Number of bars to show before move_start and after entry_ts
+    # in each pattern inspection chart.
+    # More bars = more history visible but smaller candles.
+    tunable: true
+    impact: low
+
+  max_png_per_tf:
+    value: 20
+    # Maximum number of inspection PNGs to generate per timeframe per run.
+    # Full CSV is always saved regardless of this limit.
+    tunable: true
+    impact: low
+
+  heatmap_n_bars:
+    per_timeframe:
+      "1min":  5000
+      "5min":  10000
+      "15min": 10000
+      "60min": 5000
+      "1day":  2000
+    # Number of bars to render per timeframe in the heatmap.
+    # More bars = finer detail but slower render and larger file.
+    tunable: true
+    impact: low
+
+  colors:
+    trending_up:   "#00e5cc"   # teal
+    trending_down: "#ff2952"   # red
+    consolidating: "#4a4a5a"   # gray — score in consolidation band
+    background:    "#0d1117"   # near-black
+    price_line:    "#c8d6e5"   # light blue-white
+    # Change these to adjust the visual theme.
+    tunable: true
+    impact: low
+
+
+# ------------------------------------------------------------
+# REGIME STATISTICS — walk-forward measurement
+# ------------------------------------------------------------
+regime_stats:
+
+  rolling_window_bars:
+    value: 500
+    # Window size (in bars) for rolling regime duration analysis.
+    # At each step, measure regime statistics over the past N bars.
+    # Larger = smoother, less sensitive to regime shifts.
+    # Smaller = noisier, more reactive.
+    tunable: true
+    impact: low
+
+  survival_curve_max_bars:
+    value: 200
+    # X-axis cutoff for survival curve plots.
+    # Regimes longer than this are grouped in the final bucket.
+    tunable: true
+    impact: low
+
+  in_sample_end:
+    value: "2018-12-31"
+    # Everything before this date is in-sample for regime characterization.
+    # Everything after is out-of-sample / validation.
+    # IMPORTANT: never pick thresholds by looking at the out-of-sample data.
+    tunable: true
+    impact: critical
+    note: >
+      This is the most important boundary in the research.
+      Regime statistics computed on data after this date are
+      out-of-sample validation, not model inputs.
+
+
+# ------------------------------------------------------------
+# ITERATION SYSTEM — run_iteration.py
+# ------------------------------------------------------------
+# Running python src/research/run_iteration.py auto-creates
+# the next iteration folder under outputs/iterations/.
+# Each iteration folder contains:
+#   params_snapshot.yaml    — exact copy of params.yaml used for this run
+#   patterns_NQ_{tf}.csv    — signal-by-signal output (all PatternRecord fields)
+#   summary.csv             — one row per TF with aggregate stats
+#   patterns_{tf}/          — PNG inspection charts (up to max_png_per_tf)
+#
+# To compare runs: diff two params_snapshot.yaml files or
+# load multiple summary.csv files into a DataFrame side-by-side.
+#
+# Naming: auto-incremented (iteration_001, iteration_002, ...).
+# No manual naming needed — just change params and rerun.

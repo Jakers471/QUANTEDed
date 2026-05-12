@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Raw and clean data (large binary files — source from NinjaTrader)
+data/raw/
+data/clean/
+data/audit/
+data/*.parquet
+data/*.txt
+data/*.csv
+
+# Output PNGs (large binaries — regenerate with run_iteration.py)
+outputs/patterns/patterns_*/
+outputs/iterations/*/patterns_*/
+outputs/heatmap_*.png
+outputs/regime_stats/
+
+# Keep iteration CSVs and params snapshots (lightweight, useful for tracking)
+!outputs/iterations/*/summary.csv
+!outputs/iterations/*/params_snapshot.yaml
+!outputs/iterations/*/patterns_NQ_*.csv
+
+# Coverage and test artifacts
+.coverage
+.pytest_cache/
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,6 @@
+iteration,run_ts,timeframe,ny_session,pattern_count,fib_depth_mean,fib_depth_median,fib_depth_std,move_bars_mean,move_bars_median,consol_bars_mean,consol_bars_median,entry_score_mean,trend_up_threshold,range_low_threshold,hysteresis,min_move_bars,min_consol_bars,timeout_mult,fib_invalidation,breakout_uses_close,invalidation_uses_close,scales
+iteration_002,2026-05-12T19:57:16Z,1min,True,7072,0.547,0.5,0.237,26.2,23.0,11.1,7.0,0.969,0.65,0.35,2,5,5,3,0.5,True,True,"[2, 4, 8, 16, 32, 64, 128, 256, 512]"
+iteration_002,2026-05-12T19:57:16Z,5min,True,1565,0.498,0.455,0.251,29.6,27.0,11.5,8.0,0.982,0.65,0.35,2,5,5,3,0.5,True,True,"[2, 4, 8, 16, 32, 64, 128, 256, 512]"
+iteration_002,2026-05-12T19:57:16Z,15min,True,614,0.492,0.446,0.249,26.4,24.0,12.6,8.0,0.972,0.65,0.35,2,5,5,3,0.5,True,True,"[2, 4, 8, 16, 32, 64, 128, 256, 512]"
+iteration_002,2026-05-12T19:57:16Z,60min,True,235,0.5,0.471,0.245,21.0,18.0,9.0,7.0,0.976,0.65,0.35,2,5,5,3,0.5,True,True,"[2, 4, 8, 16, 32, 64, 128, 256, 512]"
+iteration_002,2026-05-12T19:57:16Z,1day,False,25,0.453,0.41,0.197,33.9,30.0,8.2,7.0,0.969,0.65,0.35,2,5,5,3,0.5,True,True,"[2, 4, 8, 16, 32, 64, 128, 256, 512]"
