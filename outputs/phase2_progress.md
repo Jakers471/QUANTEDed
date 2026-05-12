@@ -89,9 +89,9 @@ All pending fixes shipped:
 ## Step 1 — Binary Decomposition Scoring + Heatmap (COMPLETE)
 
 ### What was added
-- `src/research/scoring.py` — core scoring module
-- `src/research/heatmap.py` — heatmap visualization (3-zone teal/gray/red)
-- `src/research/run_heatmap.py` — runner script
+- `src/research/score/scoring.py` — core scoring module
+- `src/research/score/heatmap.py` — heatmap visualization (3-zone teal/gray/red)
+- `src/research/runners/run_heatmap.py` — runner script
 - `src/loader/loader.py` — added `load_all(tf)` for research use
 
 ### How it works
@@ -102,13 +102,13 @@ Each timeframe is scored fully independently.
 
 ### How to generate heatmaps
 ```bash
-python src/research/run_heatmap.py
+python src/research/runners/run_heatmap.py
 ```
 Outputs: `outputs/heatmap_NQ_{tf}.png` per timeframe.
 
 ### How to test manually
 ```python
-from src.research.scoring import score_breakdown
+from src.research.score.scoring import score_breakdown
 import pandas as pd
 
 # Should be high score (strong 2023 bull run)
@@ -126,9 +126,9 @@ print(score_breakdown("1day", pd.Timestamp("2022-06-01 00:00:00", tz="UTC")))
 ## Steps 2–4 — Detector, Export, Visual Inspection (COMPLETE — visualization fixes pending)
 
 ### What was added
-- `src/research/detector.py` — FractalDetector state machine
-- `src/research/export.py` — patterns_to_dataframe, save_patterns, load_patterns
-- `src/research/visualize.py` — plot_pattern, plot_all_patterns
+- `src/research/detection/detector.py` — FractalDetector state machine
+- `src/research/detection/export.py` — patterns_to_dataframe, save_patterns, load_patterns
+- `src/research/visualization/visualize.py` — plot_pattern, plot_all_patterns
 
 ### State machine parameters (all in params.yaml)
 | Parameter | Value | Meaning |
@@ -152,7 +152,7 @@ print(score_breakdown("1day", pd.Timestamp("2022-06-01 00:00:00", tz="UTC")))
 
 ### How to run
 ```bash
-python src/research/run_detector.py
+python src/research/runners/run_detector.py
 ```
 Outputs:
 - `outputs/patterns/patterns_NQ_{tf}.csv` — all detected patterns
@@ -179,12 +179,12 @@ Colors sourced from `src/research/params.yaml`.
 ## Step 5 — Regime Statistics Module (COMPLETE)
 
 ### What was added
-- `src/research/regime_stats.py` — regime run extraction, duration stats, survival curves
-- `src/research/run_regime_stats.py` — runner
+- `src/research/score/regime_stats.py` — regime run extraction, duration stats, survival curves
+- `src/research/runners/run_regime_stats.py` — runner
 
 ### How to run
 ```bash
-python src/research/run_regime_stats.py
+python src/research/runners/run_regime_stats.py
 ```
 
 ### Outputs per timeframe in `outputs/regime_stats/NQ_{tf}/`
@@ -235,11 +235,11 @@ Change parameters here, not in code. Code reads from this file.
 ## Step 7 — Signal Lifecycle Visuals (COMPLETE)
 
 ### What was added
-- `src/research/detector.py` — `AbortRecord` dataclass; detector now tracks every failed pattern attempt and exposes `detector.aborts` after `run()`
-- `src/research/visualize_summary.py` — two new chart types, separate from individual pattern PNGs:
+- `src/research/detection/detector.py` — `AbortRecord` dataclass; detector now tracks every failed pattern attempt and exposes `detector.aborts` after `run()`
+- `src/research/visualization/visualize_summary.py` — two new chart types, separate from individual pattern PNGs:
   - `plot_summary_dashboard()` → `summary_dashboard.png`: 5-panel stats view across all TFs (funnel, fib depth, move/consol duration distributions, quarterly frequency)
   - `plot_signal_map()` → `signal_map_{tf}.png` per TF: compact Gantt of last 200 signal attempts + funnel + abort reason breakdown + consol survival histogram
-- `src/research/run_iteration.py` — collects aborts from detector, calls both new visuals per run, adds `abort_count` to summary CSV
+- `src/research/runners/run_iteration.py` — collects aborts from detector, calls both new visuals per run, adds `abort_count` to summary CSV
 
 ### AbortRecord fields
 | Field | Meaning |
@@ -264,14 +264,14 @@ Change parameters here, not in code. Code reads from this file.
 
 ### What was added
 - `src/research/params.py` — shared YAML loader, `lru_cache`, `get(section, key)` accessor
-- `src/research/run_iteration.py` — auto-numbered iteration runner
+- `src/research/runners/run_iteration.py` — auto-numbered iteration runner
 - `src/utils/timeframes.py` — `filter_ny_session()`, `NY_RTH_OPEN/CLOSE` constants
 - All params now read from `params.yaml` at runtime — `detector.py` and `scoring.py` no longer have hardcoded constants
 
 ### How it works
 Edit `params.yaml`, then:
 ```bash
-python src/research/run_iteration.py
+python src/research/runners/run_iteration.py
 ```
 Auto-creates `outputs/iterations/iteration_NNN/` with:
 - `params_snapshot.yaml` — exact copy of params used (run is permanently reproducible)
@@ -296,9 +296,9 @@ diff outputs/iterations/iteration_001/params_snapshot.yaml \
 ### params.yaml now controls
 | Module | Parameter |
 |---|---|
-| `scoring.py` | scales (SCALES list) |
-| `detector.py` | trend_up_threshold, range_low_threshold, hysteresis, min_move_bars, min_consol_bars, timeout_mult, fib_invalidation_level, breakout_uses_close, invalidation_uses_close |
-| `run_iteration.py` | ny_session_only, max_png_per_tf, context_bars |
+| `score/scoring.py` | scales (SCALES list) |
+| `detection/detector.py` | trend_up_threshold, range_low_threshold, hysteresis, min_move_bars, min_consol_bars, timeout_mult, fib_invalidation_level, breakout_uses_close, invalidation_uses_close |
+| `runners/run_iteration.py` | ny_session_only, max_png_per_tf, context_bars |
 
 ---
 

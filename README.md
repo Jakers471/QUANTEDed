@@ -28,17 +28,21 @@ quanted/
 │   └── research/
 │       ├── params.yaml        All tunable parameters (single source of truth)
 │       ├── params.py          Shared YAML loader (lru_cache, reload_params)
-│       ├── scoring.py         Binary decomp score — per bar, per timeframe
-│       ├── detector.py        FractalDetector state machine + PatternRecord + AbortRecord
-│       ├── export.py          patterns_to_dataframe, save_patterns, load_patterns
-│       ├── heatmap.py         Heatmap visualization
-│       ├── visualize.py       Individual pattern inspection charts
-│       ├── visualize_summary.py  summary_dashboard.png + signal_map_{tf}.png
-│       ├── regime_stats.py    Regime run extraction + duration stats + survival curves
-│       ├── run_heatmap.py     Runner: generate heatmaps
-│       ├── run_detector.py    Runner: quick detect + export (no iteration tracking)
-│       ├── run_regime_stats.py  Runner: regime stats
-│       └── run_iteration.py   Runner: full versioned iteration (use this)
+│       ├── score/
+│       │   ├── scoring.py     Binary decomp score — per bar, per timeframe
+│       │   ├── heatmap.py     Heatmap visualization
+│       │   └── regime_stats.py  Regime run extraction + duration stats + survival curves
+│       ├── detection/
+│       │   ├── detector.py    FractalDetector state machine + PatternRecord + AbortRecord
+│       │   └── export.py      patterns_to_dataframe, save_patterns, load_patterns
+│       ├── visualization/
+│       │   ├── visualize.py   Individual pattern inspection charts
+│       │   └── visualize_summary.py  summary_dashboard.png + signal_map_{tf}.png
+│       └── runners/
+│           ├── run_iteration.py    Runner: full versioned iteration (use this)
+│           ├── run_heatmap.py      Runner: generate heatmaps
+│           ├── run_detector.py     Runner: quick detect + export
+│           └── run_regime_stats.py Runner: regime stats
 ├── tests/
 │   ├── test_integrity.py      Clean data quality assertions
 │   ├── test_loader_leakage.py Future-data leakage tests
@@ -76,7 +80,7 @@ pip install -r requirements.txt
 Edit `src/research/params.yaml`, then:
 
 ```bash
-python src/research/run_iteration.py
+python src/research/runners/run_iteration.py
 ```
 
 Auto-creates `outputs/iterations/iteration_NNN/` with all outputs for that run.
@@ -87,10 +91,10 @@ See `outputs/strategy.md` for what every parameter does.
 ## Other Runners
 
 ```bash
-python src/pipeline/clean.py          # clean raw data -> parquet
-python src/audit/run_audit.py         # audit raw data quality
-python src/research/run_heatmap.py    # generate heatmap PNGs
-python src/research/run_regime_stats.py  # regime duration stats + survival curves
+python src/pipeline/clean.py                       # clean raw data -> parquet
+python src/audit/run_audit.py                      # audit raw data quality
+python src/research/runners/run_heatmap.py         # generate heatmap PNGs
+python src/research/runners/run_regime_stats.py    # regime duration stats + survival curves
 pytest tests/                         # run all tests
 ```
 

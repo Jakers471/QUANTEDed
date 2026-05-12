@@ -124,7 +124,7 @@ Further spatial geometry (e.g. tighter fib ranges, consol range width relative t
 
 ## Iteration System (Built)
 
-Run `python src/research/run_iteration.py` — auto-numbers each run.
+Run `python src/research/runners/run_iteration.py` — auto-numbers each run.
 
 Each iteration saves:
 - `params_snapshot.yaml` — exact params used (run permanently reproducible)
@@ -205,7 +205,7 @@ runners/
   run_*.py
 ```
 
-The folder reorganization planned for `src/research/` reflects this split directly.
+The folder structure of `src/research/` reflects this split directly.
 `score/` and `detection/` survive into live deployment in one form or another.
 Everything else stays in research forever.
 
