@@ -71,12 +71,22 @@ def _next_name(iterations_dir: Path, d_start: str, d_end: str) -> str:
 # Per-timeframe run
 # ---------------------------------------------------------------------------
 
-def _run_tf(tf: str, run_dir: Path, max_png: int, context_bars: int, ny: bool) -> tuple[dict, list[PatternRecord], list[AbortRecord], "pd.DataFrame"]:
+def _clip_dates(data: pd.DataFrame, start: str | None, end: str | None) -> pd.DataFrame:
+    if start:
+        data = data[data.index >= pd.Timestamp(start, tz="UTC")]
+    if end:
+        data = data[data.index <= pd.Timestamp(end, tz="UTC")]
+    return data
+
+
+def _run_tf(tf: str, run_dir: Path, max_png: int, context_bars: int, ny: bool,
+            start_date: str | None, end_date: str | None) -> tuple[dict, list[PatternRecord], list[AbortRecord], "pd.DataFrame"]:
     """
-    Detect patterns for one timeframe, save CSV + PNGs, return (stats, patterns, aborts).
+    Detect patterns for one timeframe, save CSV + PNGs, return (stats, patterns, aborts, data).
     """
     print(f"\n  [{tf}] loading score history...")
     data = score_history(tf, ny_session=ny)
+    data = _clip_dates(data, start_date, end_date)
     print(f"  [{tf}] {len(data):,} bars  ({data.index[0].date()} to {data.index[-1].date()})")
 
     detector = FractalDetector(tf)
@@ -187,8 +197,11 @@ def main() -> None:
     context_bars = _p("visualization", "context_bars")
     ny_flag      = _p("session", "ny_session_only")
     overlay_bars_cfg = _p("visualization", "detection_overlay_bars")
+    start_date   = _p("run", "start_date")
+    end_date     = _p("run", "end_date")
 
     print(f"Timeframes     : {timeframes}")
+    print(f"Date range     : {start_date or 'all'} to {end_date or 'latest'}")
     print(f"NY session     : {ny_flag}  |  max PNG: {max_png}  |  context bars: {context_bars}")
 
     # Run each timeframe
@@ -200,7 +213,7 @@ def main() -> None:
     for tf in timeframes:
         ny = ny_flag and (tf != "1day")
         try:
-            row, patterns, aborts, data = _run_tf(tf, run_dir, max_png, context_bars, ny)
+            row, patterns, aborts, data = _run_tf(tf, run_dir, max_png, context_bars, ny, start_date, end_date)
             stats_rows.append(row)
             patterns_by_tf[tf] = patterns
             aborts_by_tf[tf]   = aborts

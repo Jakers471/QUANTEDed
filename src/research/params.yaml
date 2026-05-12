@@ -32,6 +32,25 @@ run:
     tunable: true
     impact: low
 
+  start_date:
+    value: "2015-01-01"
+    # Clip data to start from this date. Use null to load all available history.
+    # Format: "YYYY-MM-DD". Data begins 2005-01-11 — anything earlier is ignored.
+    # Example — 10 years:  "2015-01-01"
+    # Example — in-sample only:  "2005-01-11"
+    # Example — all data:  null
+    tunable: true
+    impact: medium
+
+  end_date:
+    value: null
+    # Clip data to end at this date. Use null to load up to the latest bar.
+    # Format: "YYYY-MM-DD".
+    # Example — in-sample only:  "2018-12-31"
+    # Example — all data:  null
+    tunable: true
+    impact: medium
+
 
 # ------------------------------------------------------------
 # SCORING — Binary Decomposition Score
