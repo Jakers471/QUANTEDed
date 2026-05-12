@@ -12,7 +12,7 @@ import pandas as pd
 import numpy as np
 import pytest
 
-from src.research.scoring import SCALES, score_history
+from src.research.score.scoring import SCALES, score_history
 
 
 # ---------------------------------------------------------------------------

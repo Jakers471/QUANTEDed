@@ -23,20 +23,20 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 import numpy as np
 import pandas as pd
 import yaml
 
-from src.research.params            import load_params, reload_params, PARAMS_PATH, get as _p
-from src.research.scoring           import score_history
-from src.research.detector          import FractalDetector, PatternRecord, AbortRecord
-from src.research.export            import patterns_to_dataframe, save_patterns
-from src.research.visualize         import plot_all_patterns
-from src.research.visualize_summary import plot_summary_dashboard, plot_signal_map
+from src.research.params                      import load_params, reload_params, PARAMS_PATH, get as _p
+from src.research.score.scoring               import score_history
+from src.research.detection.detector          import FractalDetector, PatternRecord, AbortRecord
+from src.research.detection.export            import patterns_to_dataframe, save_patterns
+from src.research.visualization.visualize     import plot_all_patterns
+from src.research.visualization.visualize_summary import plot_summary_dashboard, plot_signal_map
 
-ITERATIONS_DIR = Path(__file__).resolve().parents[2] / "outputs" / "iterations"
+ITERATIONS_DIR = Path(__file__).resolve().parents[3] / "outputs" / "iterations"
 
 
 # ---------------------------------------------------------------------------

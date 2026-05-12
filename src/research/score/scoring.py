@@ -8,7 +8,7 @@ Range: 0.0 (below all SMAs) to 1.0 (above all SMAs).
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 import pandas as pd
 
@@ -20,6 +20,11 @@ from src.research.params import get as _p
 def _scales() -> list[int]:
     """Read scales from params.yaml each call — respects reload_params() between iterations."""
     return _p("scoring", "scales")
+
+
+# Module-level export for backwards compat with heatmap and tests.
+# score_history() calls _scales() internally so hot-reload still works.
+SCALES = _scales()
 
 
 def binary_decomp_score(tf: str, as_of: pd.Timestamp) -> float:

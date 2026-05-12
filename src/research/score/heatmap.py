@@ -5,7 +5,7 @@ Dark style with 3-zone regime colors (teal/gray/red).
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,10 +14,10 @@ import matplotlib.ticker as mticker
 from matplotlib.gridspec import GridSpec
 import yaml
 
-from src.research.scoring import SCALES, score_history
+from src.research.score.scoring import SCALES, score_history
 
 # Load colors from params.yaml
-_PARAMS_PATH = Path(__file__).resolve().parents[2] / "src" / "research" / "params.yaml"
+_PARAMS_PATH = Path(__file__).resolve().parents[3] / "src" / "research" / "params.yaml"
 with open(_PARAMS_PATH) as _f:
     _PARAMS = yaml.safe_load(_f)
 _VIZ_COLORS = _PARAMS["visualization"]["colors"]

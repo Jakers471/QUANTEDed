@@ -7,12 +7,12 @@ Output: outputs/heatmap_NQ_{tf}.png per timeframe
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from src.research.heatmap import plot_heatmap
+from src.research.score.heatmap import plot_heatmap
 from src.utils.timeframes import TIMEFRAMES
 
-OUTPUTS = Path(__file__).resolve().parents[2] / "outputs"
+OUTPUTS = Path(__file__).resolve().parents[3] / "outputs"
 
 # How many bars to show per timeframe — balance detail vs file size
 N_BARS = {

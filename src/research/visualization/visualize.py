@@ -5,7 +5,7 @@ Dark style matching heatmap.py (BG="#0d1117", TEAL="#00e5cc", RED="#ff2952").
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 import numpy as np
 import matplotlib
@@ -17,7 +17,7 @@ from matplotlib.lines import Line2D
 
 import pandas as pd
 
-from src.research.detector import PatternRecord
+from src.research.detection.detector import PatternRecord
 
 # ---------------------------------------------------------------------------
 # Visual constants

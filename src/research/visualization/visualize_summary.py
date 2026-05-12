@@ -9,7 +9,7 @@ Two outputs per run:
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from collections import Counter
 
@@ -23,7 +23,7 @@ from matplotlib.lines import Line2D
 
 import pandas as pd
 
-from src.research.detector import PatternRecord, AbortRecord
+from src.research.detection.detector import PatternRecord, AbortRecord
 
 # ---------------------------------------------------------------------------
 # Visual constants (same palette as visualize.py)

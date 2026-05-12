@@ -13,7 +13,7 @@ Outputs per timeframe in outputs/regime_stats/NQ_{tf}/:
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 import numpy as np
 import pandas as pd
@@ -21,8 +21,8 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import yaml
 
-from src.research.scoring import score_history
-from src.research.regime_stats import (
+from src.research.score.scoring      import score_history
+from src.research.score.regime_stats import (
     extract_regime_runs,
     regime_duration_stats,
     survival_table,
@@ -34,7 +34,7 @@ from src.research.regime_stats import (
 # Config
 # ---------------------------------------------------------------------------
 
-_PARAMS_PATH = Path(__file__).resolve().parents[2] / "src" / "research" / "params.yaml"
+_PARAMS_PATH = Path(__file__).resolve().parents[3] / "src" / "research" / "params.yaml"
 with open(_PARAMS_PATH) as _f:
     _PARAMS = yaml.safe_load(_f)
 
@@ -63,7 +63,7 @@ REGIME_COLOR = {
 
 TIMEFRAMES = ["1min", "5min", "15min", "60min", "1day"]
 
-OUTPUT_BASE = Path(__file__).resolve().parents[2] / "outputs" / "regime_stats"
+OUTPUT_BASE = Path(__file__).resolve().parents[3] / "outputs" / "regime_stats"
 
 
 # ---------------------------------------------------------------------------

@@ -11,20 +11,20 @@ Outputs:
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 import numpy as np
 
-from src.research.scoring  import score_history
-from src.research.detector import FractalDetector
-from src.research.export   import save_patterns
-from src.research.visualize import plot_all_patterns
+from src.research.score.scoring        import score_history
+from src.research.detection.detector   import FractalDetector
+from src.research.detection.export     import save_patterns
+from src.research.visualization.visualize import plot_all_patterns
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 TIMEFRAMES   = ["1min", "5min", "15min", "60min", "1day"]
-OUTPUT_DIR   = Path(__file__).resolve().parents[2] / "outputs" / "patterns"
+OUTPUT_DIR   = Path(__file__).resolve().parents[3] / "outputs" / "patterns"
 MAX_PNG      = 20   # how many inspection PNGs to generate per TF
 
 # ---------------------------------------------------------------------------

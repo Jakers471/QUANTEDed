@@ -5,11 +5,11 @@ Converts PatternRecord lists to/from flat DataFrames and CSV files.
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 import pandas as pd
 
-from src.research.detector import PatternRecord
+from src.research.detection.detector import PatternRecord
 
 
 def patterns_to_dataframe(patterns: list[PatternRecord]) -> pd.DataFrame:

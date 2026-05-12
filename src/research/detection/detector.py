@@ -7,7 +7,7 @@ score_history() and it returns a list of PatternRecord dataclasses.
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from dataclasses import dataclass
 from enum import Enum, auto

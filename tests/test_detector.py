@@ -11,8 +11,8 @@ import pandas as pd
 import numpy as np
 import pytest
 
-from src.research.scoring import score_history
-from src.research.detector import FractalDetector, PatternRecord
+from src.research.score.scoring       import score_history
+from src.research.detection.detector  import FractalDetector, PatternRecord
 
 
 # ---------------------------------------------------------------------------
