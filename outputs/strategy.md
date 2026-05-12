@@ -168,3 +168,142 @@ Each iteration saves:
 | Aborted | 61,022 |
 
 Roughly 1 in 9 move attempts result in a completed signal.
+
+---
+
+## Code Architecture — Portable Core vs Research Infrastructure
+
+The Python project is not the deployment. It is the specification and validation layer.
+When going live, the core logic gets re-implemented or wrapped — it does not get directly deployed as-is.
+
+Two distinct categories of code:
+
+**Portable core** — the algorithm itself. Small, isolated, no visualization dependencies.
+Anything in this category must be re-implementable in another language by reading it.
+
+```
+score/
+  scoring.py      binary decomp math — pure computation
+  
+detection/
+  detector.py     state machine logic — pure rules
+  export.py       serialization only
+```
+
+**Research infrastructure** — Python-only, never deployed. Gets stripped when going live.
+
+```
+score/
+  regime_stats.py   statistical analysis
+  heatmap.py        visualization
+
+visualization/
+  visualize.py
+  visualize_summary.py
+
+runners/
+  run_*.py
+```
+
+The folder reorganization planned for `src/research/` reflects this split directly.
+`score/` and `detection/` survive into live deployment in one form or another.
+Everything else stays in research forever.
+
+---
+
+## Deployment Options
+
+Three viable paths when the strategy is ready to go live.
+None need to be decided now. The research architecture supports all three.
+
+---
+
+### Option 1 — NinjaTrader (NinjaScript / C#)
+
+The portable core (`scoring.py` + `detector.py`) gets re-implemented in NinjaScript.
+Python stays as the reference implementation.
+
+Verification process:
+1. Run Python detector on historical data, save detected patterns to CSV (already done)
+2. Build the NinjaScript version following the same rules
+3. Run NinjaScript on the same data
+4. Compare detected pattern timestamps bar-by-bar — they must match
+
+If they match, the port is correct. If not, debug until they do.
+
+NinjaTrader handles its own data access (`AddDataSeries`, `BarsArray[]`), its own indicators, and its own order execution (`EnterLong`, `ExitLong`). The Python loader and Python indicators are not used in NT.
+
+---
+
+### Option 2 — n8n + Python (workflow orchestration)
+
+n8n acts as the scheduler and signal router. The Python code runs on a server (local or cloud).
+
+Flow:
+```
+n8n trigger (every bar close, or on schedule)
+  → calls Python detector script or HTTP endpoint
+  → Python returns signal: { signal: "entry", price: 21450, tf: "5min" }
+  → n8n routes signal to broker API or alert system
+```
+
+For this to work, the detector needs to be wrapped as either:
+- A standalone Python script with clean stdin/stdout (simplest)
+- A minimal HTTP endpoint (Flask or FastAPI, one file)
+
+The key: n8n does not care about the folder structure. It calls one entry point.
+The complexity of the research project stays inside that entry point.
+
+This path keeps everything in Python — no C# port required.
+Requires a server (cloud VM, Raspberry Pi, local machine) that stays running.
+
+---
+
+### Option 3 — Cloud Python (direct deployment)
+
+The Python detector runs on a cloud server on a schedule.
+No n8n in the middle — the script itself handles scheduling, data fetching, and signal output.
+
+Options: AWS Lambda, GCP Cloud Run, a simple VPS with cron.
+
+Same requirement as Option 2: the detector needs a clean entry point.
+The research infrastructure (visualization, iteration system) is not deployed — only the core.
+
+---
+
+### What all three options share
+
+All three deployment paths require the same thing from the Python project:
+
+1. The core logic is correct and validated (happening now in research phase)
+2. The algorithm is fully specified in plain English so it can be verified or re-implemented
+3. The historical pattern CSV serves as ground truth for verifying any new implementation
+
+The Python research codebase is already structured to produce all three.
+No rework needed when it's time to choose a deployment path — just wrap or re-implement the core.
+
+---
+
+## Specification (Plain English Rules)
+
+To be filled in as the detector is finalized.
+This is the portable artifact — language-agnostic, unambiguous.
+Any implementation (Python, C#, n8n workflow) must produce results that match this spec.
+
+### Binary Decomposition Score
+- Compute SMA for each scale in `[2, 4, 8, 16, 32, 64, 128, 256, 512]`
+- Score = count of scales where `close > SMA(scale)` divided by total scale count
+- Range: 0.0 to 1.0. Computed independently per timeframe. No cross-TF logic.
+
+### Regime Classification
+- Score > 0.65 → trending up
+- Score 0.35–0.65 → consolidating
+- Score < 0.35 → trending down
+
+### Pattern Detection Sequence (bullish, up-move only currently)
+- Step 1 MOVE: score > 0.65 for at least 2 consecutive bars
+- Step 2 CONSOL: score drops below 0.65, stays above 0.35. Track high/low of range.
+  - Invalidated if close < (move_high - move_height × 0.5)
+  - Invalidated if consolidation exceeds 3 × move_duration bars
+  - Invalidated if score drops below 0.35 for 2 bars
+- Step 3 ENTRY: score > 0.65 again AND close > prior consolidation high, confirmed for 2 bars, after minimum 5 consolidation bars

@@ -4,6 +4,16 @@
 
 ## ARCHITECTURE — Read This First
 
+**Deployment note (no decision needed yet):**
+The Python project is the research and specification layer — not the deployment.
+When the strategy is ready to go live, three options exist: NinjaTrader (re-implement core in C#),
+n8n + Python (wrap detector as a callable script/endpoint, n8n schedules and routes),
+or Cloud Python (deploy directly, no n8n). All three are viable. The research architecture
+supports all of them because the portable core (scoring + detection) is isolated from
+visualization and infrastructure. Full detail in `outputs/strategy.md` and `outputs/research_roadmap.md`.
+
+---
+
 **One theory. Multiple outputs.**
 
 The binary decomposition score is the single underlying engine for everything in this project.

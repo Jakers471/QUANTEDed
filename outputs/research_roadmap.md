@@ -146,13 +146,44 @@ Nothing gets deleted from this list — completed items get marked and dated.
 
 These are NOT research items — they require validated research as inputs first.
 
-- Entry execution: which bar to enter, what price (close, open+1, limit?)
-- Stop loss: ATR-based, below consolidation low, below fib_50?
-- Exit: score-based (exit when score drops), time-based, target-based?
-- Position sizing: fixed, volatility-adjusted (1/ATR), Kelly?
+- Entry execution: which bar to enter, what price
+- Exit logic: to be defined
+- Extensions and exhaustion signals: for exit conditions and stopping entries
 - Walk-forward backtest framework: time-based splits, not random
 - In-sample boundary enforcement: all parameter choices from pre-2018 data only
 - Out-of-sample validation: 2019–2022, held-out 2023–2025
+- Post-signal expectancy analysis: what happened after signal fired, did aborted signals produce positive or negative expectancy
+
+---
+
+## DEPLOYMENT — future, no decision required yet
+
+Three options under consideration. Research architecture supports all three.
+Decision deferred until strategy is validated. See `outputs/strategy.md` for full detail on each.
+
+### Option 1 — NinjaTrader (NinjaScript / C#)
+- Re-implement portable core (`scoring.py` + `detector.py`) in NinjaScript
+- Python historical pattern CSV serves as ground truth for verification
+- NT handles its own data, indicators, and order execution natively
+- **Blocked by:** Strategy validated + specification complete
+
+### Option 2 — n8n + Python (workflow orchestration)
+- n8n schedules execution and routes signals to broker
+- Python detector wrapped as a standalone script or minimal HTTP endpoint
+- Keeps everything in Python — no C# port
+- Requires a server running somewhere (cloud or local)
+- **Blocked by:** Strategy validated + clean detector entry point
+
+### Option 3 — Cloud Python (direct)
+- Python detector deployed to cloud on a schedule (AWS Lambda, GCP, VPS + cron)
+- No n8n — script handles its own scheduling and signal output
+- Same entry point requirement as Option 2
+- **Blocked by:** Strategy validated + clean detector entry point
+
+### What to build now that helps all three
+- Keep portable core (score + detection) small and isolated — no viz dependencies
+- Maintain the Specification section in `strategy.md` — language-agnostic rules
+- Historical pattern CSV is already being saved per iteration — this becomes the verification dataset
 
 ---
 
